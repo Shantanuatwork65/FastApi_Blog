@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from schemas import PostCreate,PostResponse
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 template=Jinja2Templates(directory="template")
@@ -23,6 +24,33 @@ posts: list[dict] = [
         "date_posted": "April 21, 2025",
     },
 ]
+
+@app.post("/api/posts",response_model=PostResponse,status_code=status.HTTP_201_CREATED)
+def create_post(post: PostCreate):
+    new_id=1
+    for eachpost in posts:
+        new_id=max(new_id,eachpost["id"]+1)
+    new_post={
+        "id": new_id,
+        "author": post.author,
+        "title": post.title,
+        "content": post.content,
+        "date_posted": "April 22, 2025",
+    }
+    posts.append(new_post)
+    return new_post
+
+@app.get("/api/posts",response_model=list[PostResponse])
+def get_posts():
+    return posts
+
+@app.get("/api/posts/{id}",response_model=PostResponse)
+def get_post(id:int):   
+    for post in posts:
+        if post["id"] == id:
+            return post
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
+
 @app.get("/",response_class=HTMLResponse,include_in_schema=False)
 def home(request:Request):
     return template.TemplateResponse(request,"home.html",{"posts":posts,"title":"home"})
